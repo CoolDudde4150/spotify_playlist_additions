@@ -1,4 +1,4 @@
-.PHONY: clean clean-test clean-pyc clean-build docs help
+.PHONY: clean clean-test clean-pyc clean-build clean_venv docs help venv style
 .DEFAULT_GOAL := help
 
 define BROWSER_PYSCRIPT
@@ -47,6 +47,10 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr htmlcov/
 	rm -fr .pytest_cache
 
+clean_venv: ## Removes the venv and artifacts created by make venv (call .venv/)
+	rm -rf .venv activate
+	find -iname "*.pyc" -delete
+
 lint: ## check style with flake8
 	flake8 spotify_playlist_additions tests
 
@@ -83,3 +87,16 @@ dist: clean ## builds source and wheel package
 
 install: clean ## install the package to the active Python's site-packages
 	python setup.py install
+
+venv: .venv/bin/activate ## create a python virtual environment with dependencies and packages installed. Only runs if setup.py or requirements_dex.txt changed
+
+.venv/bin/activate: requirements_dev.txt setup.py
+	virtualenv --python=/usr/bin/python3.8 .venv
+	. .venv/bin/activate; \
+	pip install -r requirements_dev.txt; \
+	pip install -e .
+	ln -sfn .venv/bin/activate activate
+	@echo "Use 'source ./activate' to enter virtual environment"
+
+style: ## styles all code with yapf - google auto styling
+	yapf -irp --style google tests spotify_testing
