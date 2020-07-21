@@ -1,11 +1,9 @@
 #!/usr/bin/env python
-
 """Tests for `spotify_playlist_additions` package."""
 
 import pytest
 
-
-from spotify_playlist_additions import spotify_playlist_additions
+# from spotify_playlist_additions import spotify_playlist_additions
 
 
 @pytest.fixture
