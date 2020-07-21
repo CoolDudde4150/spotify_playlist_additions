@@ -2,7 +2,6 @@
 
 
 import asyncio
-from datetime import datetime
 import logging
 import requests
 import traceback
@@ -45,7 +44,7 @@ class FluidPlaylist:
             try:
                 self._playlist = playlists["items"][int(user_input)]
                 break
-            except:
+            except:  # noqa: E722
                 pass
 
     async def start(self):
@@ -97,7 +96,7 @@ class FluidPlaylist:
             prev_track = track
 
             LOG.debug("Waiting %s seconds before testing tracks again",
-                     self._search_wait / 1000)
+                      self._search_wait / 1000)
             await asyncio.sleep(self._search_wait / 1000)
 
     def _detect_skipped_track(self, remaining_duration: float,
