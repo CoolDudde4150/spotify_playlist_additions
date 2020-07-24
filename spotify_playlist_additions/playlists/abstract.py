@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import Any
 from spotipy import Spotify
+
 
 class AbstractPlaylist(ABC):
     """An abstract class that a new playlist can inherit callback functions
@@ -7,16 +9,21 @@ class AbstractPlaylist(ABC):
     found.
     """
 
-    def __init__(self, spotify_client: Spotify):
+    def __init__(self, spotify_client: Spotify, playlist: dict, user_id: str):
         """The most basic initializer that can be implemented. Any playlist
-        implementation needs take in a Spotify client from spotipy
+        implementation needs take in a Spotify client from spotipy and a playlist
 
         Args:
             spotify_client: A client that can be used for making Spotify API
                 calls.
+            playlist: The playlist that this runtime has been configured to run on. In the same format as described on
+                the spotify API
+            user_id: The user ID that has connected to this runtime.
         """
 
         self._spotify_client = spotify_client
+        self._playlist = playlist
+        self._user_id = user_id
 
     @property
     def scope(self) -> str:
@@ -30,7 +37,12 @@ class AbstractPlaylist(ABC):
         return ""
 
     @abstractmethod
-    def handle_skipped_track(self, track: dict) -> None:
+    async def start(self) -> Any:
+        """Method called at the start of runtime. Only called once.
+        """
+
+    @abstractmethod
+    async def handle_skipped_track(self, track: dict) -> Any:
         """Called on each configured playlist when the main loop detects a
         skipped track.
 
@@ -38,9 +50,8 @@ class AbstractPlaylist(ABC):
             track: The skipped track retrieved from the Spotify API.
                 Retains the exact format that Spotify defines in their API.
         """
-
     @abstractmethod
-    def handle_fully_listened_track(self, track: dict) -> None
+    async def handle_fully_listened_track(self, track: dict) -> Any:
         """Called on each configured playlist when the main loop detects a
         fully listened track (to within a degree of uncertainty)
 
