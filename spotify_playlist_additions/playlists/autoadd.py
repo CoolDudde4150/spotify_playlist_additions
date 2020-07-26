@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from spotipy import Spotify
 
@@ -8,6 +9,12 @@ LOG = logging.getLogger(__name__)
 
 
 class AutoAddPlaylist(AbstractPlaylist):
+    async def start(self) -> Any:
+        pass
+
+    async def stop(self) -> Any:
+        pass
+
     scope = "user-read-currently-playing playlist-modify-public"
 
     def handle_skipped_track(self, track: dict):

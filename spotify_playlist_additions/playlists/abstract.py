@@ -42,6 +42,11 @@ class AbstractPlaylist(ABC):
         """
 
     @abstractmethod
+    async def stop(self) -> Any:
+        """Method called at the end of runtime. Only called once
+        """
+
+    @abstractmethod
     async def handle_skipped_track(self, track: dict) -> Any:
         """Called on each configured playlist when the main loop detects a
         skipped track.
