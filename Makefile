@@ -103,4 +103,4 @@ venv: .venv/bin/activate ## create a python virtual environment with dependencie
 	@echo "Use 'source ./activate' to enter virtual environment"
 
 style: ## styles all code with yapf - google auto styling
-	yapf -irp --style google tests spotify_testing
+	yapf -irp --style pep8 tests spotify_testing

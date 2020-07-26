@@ -1,8 +1,6 @@
 import logging
 from typing import Any
 
-from spotipy import Spotify
-
 from spotify_playlist_additions.playlists.abstract import AbstractPlaylist
 
 LOG = logging.getLogger(__name__)

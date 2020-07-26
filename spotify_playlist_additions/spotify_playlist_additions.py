@@ -44,7 +44,9 @@ class SpotifyPlaylistEngine:
         self._collect_addons()
         self._scope = ""
         self._get_scope()
-        self._spotify_client = Spotify(auth_manager=SpotifyOAuth(redirect_uri="http://localhost:8888/callback", scope=self._scope, cache_path=".tokens.txt"))
+        self._spotify_client = Spotify(auth_manager=SpotifyOAuth(redirect_uri="http://localhost:8888/callback",
+                                                                 scope=self._scope,
+                                                                 cache_path=".tokens.txt"))
 
         self._user_id: str = ""
 
