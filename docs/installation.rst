@@ -32,13 +32,13 @@ You can either clone the public repository:
 
 .. code-block:: console
 
-    $ git clone git://github.com/CoolDudde4150/spotify_playlist_additions
+    $ git clone git://github.com/prchristie/spotify_playlist_additions
 
 Or download the `tarball`_:
 
 .. code-block:: console
 
-    $ curl -OJL https://github.com/CoolDudde4150/spotify_playlist_additions/tarball/master
+    $ curl -OJL https://github.com/prchristie/spotify_playlist_additions/tarball/master
 
 Once you have a copy of the source, you can install it with:
 
@@ -47,5 +47,5 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _Github repo: https://github.com/CoolDudde4150/spotify_playlist_additions
-.. _tarball: https://github.com/CoolDudde4150/spotify_playlist_additions/tarball/master
+.. _Github repo: https://github.com/prchristie/spotify_playlist_additions
+.. _tarball: https://github.com/prchristie/spotify_playlist_additions/tarball/master
