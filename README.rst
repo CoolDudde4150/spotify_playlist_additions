@@ -6,8 +6,8 @@ Spotify Playlist Additions
 .. image:: https://img.shields.io/pypi/v/spotify_playlist_additions.svg
         :target: https://pypi.python.org/pypi/spotify_playlist_additions
 
-.. image:: https://img.shields.io/travis/CoolDudde4150/spotify_playlist_additions.svg
-        :target: https://travis-ci.com/CoolDudde4150/spotify_playlist_additions
+.. image:: https://img.shields.io/travis/prchristie/spotify_playlist_additions.svg
+        :target: https://travis-ci.com/prchristie/spotify_playlist_additions
 
 .. image:: https://readthedocs.org/projects/spotify-playlist-additions/badge/?version=latest
         :target: https://spotify-playlist-additions.readthedocs.io/en/latest/?badge=latest
