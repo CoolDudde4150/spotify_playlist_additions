@@ -8,10 +8,10 @@ script: tox
 deploy:
   provider: pypi
   distributions: sdist bdist_wheel
-  user: CoolDudde4150
+  user: prchristie
   password:
     secure: LZzdCL5vkDgT1k4Tuz7FQN1AIRId2v60bQjw8D6mqQWKxkHQBeE+zhqCScXw4fv/z72m67BTBLdQYtRNvF7oqDcJVrLa2jrVbq/OPI+xVpr84c5j3fRc/gblMY4BAeeaB5AZa2edrXhG32I4u7Tbdwnwo8j7K4Voh0m6HdacyQ98DUIF1yyn7jLwVwsk8c62K0NQOF9XEZ8Krv3trxe9wKC5o5hO70hmiDUPUQSkwOgYtfc25+IsVw/eVKByBtikoee3USZih2tzqscgNrunpgZq+giIpWvAkEmasTsogDgApxuRKHSoPORaHerZgVczcXDsUXUynhK75/5lOy0iiBVxJ30AN5GW9tHUBDlxH2Y/IIb97oPXgph+v7u6diB3ILzV5U3vicZVaBnxUjRJ31zalHkjoV6AXtqYO+Drl64DHJ8cbpAyOHKt6H36nsa3V0Hdbr9Yp345oVA6qhh593LRC6GwKbqXhD+E4CNfcgjc6u4MifpPaTKROr+kK4lMbcW8wOh7eTGPbRR54pHGRPPTAOsgskZrs1aDl7IDgzuGDYwWqC5J4S1ApcnkmL/Cz++IBJ5OSq2FscKQA52ut38rAU3s3jlPJx4gmWh1PJlW8rFTIk0pQC0gAF5U1lih+JECRU8qHyTZWfxZaXuPeMAYEvkTt7Ew9hUw7XEQkfY=
   on:
     tags: true
-    repo: CoolDudde4150/spotify_playlist_additions
+    repo: prchristie/spotify_playlist_additions
     python: 3.8
