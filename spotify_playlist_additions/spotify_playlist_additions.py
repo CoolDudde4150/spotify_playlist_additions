@@ -2,23 +2,21 @@
 
 import asyncio
 import logging
-from typing import List
-
 import requests
+
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 
-from spotify_playlist_additions.playlists.abstract import AbstractPlaylist
 from spotify_playlist_additions.playlists.autoadd import AutoAddPlaylist
+from spotify_playlist_additions.playlists.autoremove import AutoRemovePlaylist
 
 LOG = logging.getLogger(__name__)
 
 
 def _detect_skipped_track(remaining_duration: float,
                           end_of_track_buffer: float, track: dict,
-                          prev_frame_track: dict) -> bool:
-    if remaining_duration > end_of_track_buffer and prev_frame_track[
-            "item"]["name"] != track["item"]["name"]:
+                          prev_track: dict) -> bool:
+    if remaining_duration > end_of_track_buffer and prev_track["item"]["name"] != track["item"]["name"]:
         return True
 
     return False
@@ -40,7 +38,7 @@ class SpotifyPlaylistEngine:
         self._playlist = playlist
         self._search_wait = search_wait
 
-        self._playlist_addons: List[AbstractPlaylist] = []
+        self._playlist_addons = []
         self._collect_addons()
         self._scope = ""
         self._get_scope()
@@ -66,6 +64,8 @@ class SpotifyPlaylistEngine:
                     "Retrieving currently running track from spotify timed out.",
                     " See debug for more detail (this is unlikely to be a problem)"
                 )
+            except Exception as e:
+                LOG.error(e)
             if not track:
                 continue
 
@@ -73,21 +73,20 @@ class SpotifyPlaylistEngine:
                 prev_track = track
 
             if track["item"]["id"] != prev_track["item"]["id"]:
-                LOG.info("Detected the start of a new song (%s)",
+                LOG.info("Detected song start: %s",
                          track["item"]["name"])
 
             if _detect_skipped_track(remaining_duration, self._search_wait,
                                      track, prev_track):
 
-                LOG.info("Detected skipped song. Removed %s from playlist",
+                LOG.info("Detected skipped song: %s",
                          prev_track["item"]["name"])
                 for addon in self._playlist_addons:
-                    print(addon)
                     await addon.handle_skipped_track(track=prev_track)
 
             elif _detect_fully_listened_track(remaining_duration,
                                               self._search_wait):
-                LOG.info("Detected fully listened song (%s)",
+                LOG.info("Detected fully listened song: %s",
                          prev_track["item"]["name"])
                 for addon in self._playlist_addons:
                     await addon.handle_fully_listened_track(prev_track)
@@ -121,9 +120,12 @@ class SpotifyPlaylistEngine:
 
     def _collect_addons(self):
         self._playlist_addons.append(AutoAddPlaylist)
+        self._playlist_addons.append(AutoRemovePlaylist)
 
     def _init_addons(self):
-        self._playlist_addons[0](self._spotify_client, self._playlist, self._user_id)
+        for index in range(len(self._playlist_addons)):
+            self._playlist_addons[index] = self._playlist_addons[index](self._spotify_client, self._playlist,
+                                                                        self._user_id)
 
     def _get_scope(self):
         for addon in self._playlist_addons:
