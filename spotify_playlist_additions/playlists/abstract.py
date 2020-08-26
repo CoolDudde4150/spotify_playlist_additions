@@ -55,6 +55,7 @@ class AbstractPlaylist(ABC):
             track: The skipped track retrieved from the Spotify API.
                 Retains the exact format that Spotify defines in their API.
         """
+
     @abstractmethod
     async def handle_fully_listened_track(self, track: dict) -> Any:
         """Called on each configured playlist when the main loop detects a
