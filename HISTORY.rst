@@ -7,6 +7,7 @@ History
 
 * Separated the fluid playlist into multiple configurable playlists
 * Added docstrings to everything
+* Added pyup config file
 
 0.0.2 (2020-08-23)
 ------------------
