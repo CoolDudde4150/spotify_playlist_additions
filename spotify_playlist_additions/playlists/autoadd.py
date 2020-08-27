@@ -33,7 +33,7 @@ class AutoAddPlaylist(AbstractPlaylist):
 
         Args:
             track: The fully listened track retrieved from the Spotify API.
-                Retains the exact format that Spotify defines in thei API
+                Retains the exact format that Spotify defines in their API
         """
         pass
 

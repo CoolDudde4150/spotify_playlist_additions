@@ -1,3 +1,5 @@
+"""Contains the abstract interface for a playlist addon"""
+
 from abc import ABC, abstractmethod
 from typing import Any
 from spotipy import Spotify
@@ -63,5 +65,5 @@ class AbstractPlaylist(ABC):
 
         Args:
             track: The fully listened track retrieved from the Spotify API.
-                Retains the exact format that Spotify defines in thei API
+                Retains the exact format that Spotify defines in their API
         """

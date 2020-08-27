@@ -2,8 +2,8 @@
 
 import asyncio
 import logging
-import requests
 
+import requests
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 
@@ -14,8 +14,22 @@ LOG = logging.getLogger(__name__)
 
 
 def _detect_skipped_track(remaining_duration: float,
-                          end_of_track_buffer: float, track: dict,
+                          end_of_track_buffer: float,
+                          track: dict,
                           prev_track: dict) -> bool:
+    """Performs the detection logic for whether a track was skipped
+
+    Args:
+        remaining_duration: The remaining duration of the track in milliseconds
+        end_of_track_buffer: The buffer of time at the end of a song that, if skipped, will still be counted as fully
+            listened
+        track: The track retrieved directly from the spotify API.
+        prev_track: The track that was detected to be playing on the previous frame.
+
+    Returns:
+        bool: Whether the track has been skipped or not.
+    """
+
     if remaining_duration > end_of_track_buffer and prev_track["item"]["name"] != track["item"]["name"]:
         return True
 
@@ -23,32 +37,59 @@ def _detect_skipped_track(remaining_duration: float,
 
 
 def _detect_fully_listened_track(remaining_duration,
-                                 end_of_track_buffer):
+                                 end_of_track_buffer) -> bool:
+    """Performs the detection logic for whether a track was fully listened through
+
+    Args:
+        remaining_duration: The remaining duration of the track in milliseconds
+        end_of_track_buffer: The amount of milliseconds at the end of the song that will still count as fully listened.
+
+    Returns:
+        bool: Whether the track has been fully listened through or not.
+    """
+
     if remaining_duration < end_of_track_buffer:
         return True
     return False
 
 
 class SpotifyPlaylistEngine:
+    """The main driver for Spotify Playlist Additions. Contains the main loop, functionality branches out from here.
+    Contains logic for detection of a skipped or fully listened track and passes this information to various playlist
+    additions that utilize it to perform actions on a playlist
+    """
 
     def __init__(self,
                  search_wait: float = 5000,
                  playlist: dict = None):
+        """Initializer for a SpotifyPlaylistEngine. Nothing that absolutely requires an internet connection should be
+        located here.
+
+        Args:
+            search_wait: How long to wait before performing a track search. Essentially, the rate of checking or time
+            per frame
+            playlist: The playlist dictionary retrieved directly from the spotify API.
+        """
 
         self._playlist = playlist
         self._search_wait = search_wait
 
         self._playlist_addons = []
         self._collect_addons()
+
         self._scope = ""
         self._get_scope()
+
         self._spotify_client = Spotify(auth_manager=SpotifyOAuth(redirect_uri="http://localhost:8888/callback",
                                                                  scope=self._scope,
                                                                  cache_path=".tokens.txt"))
 
         self._user_id: str = ""
 
-    async def start(self):
+    async def start(self) -> None:
+        """Main loop for the program
+        """
+
         self._user_id = self._spotify_client.current_user()["id"]
         self._init_addons()
 
@@ -100,7 +141,9 @@ class SpotifyPlaylistEngine:
                       self._search_wait / 1000)
             await asyncio.sleep(self._search_wait / 1000)
 
-    def choose_playlist_cli(self):
+    def choose_playlist_cli(self) -> None:
+        """Simple interface to choose the playlist. Will be improved upon later on.
+        """
 
         print("Select the playlist you want to use")
 
@@ -119,14 +162,24 @@ class SpotifyPlaylistEngine:
                 pass
 
     def _collect_addons(self):
+        """Collects the addons specified in the config file
+        """
+
         self._playlist_addons.append(AutoAddPlaylist)
         self._playlist_addons.append(AutoRemovePlaylist)
 
     def _init_addons(self):
+        """Initializes addons with the required inputs
+        """
+
         for index in range(len(self._playlist_addons)):
             self._playlist_addons[index] = self._playlist_addons[index](self._spotify_client, self._playlist,
                                                                         self._user_id)
 
     def _get_scope(self):
+        """Collects the scope of all the addons into a singular scope, used to make a singular scope request to
+        spotify
+        """
+
         for addon in self._playlist_addons:
             self._scope += addon.scope + " "

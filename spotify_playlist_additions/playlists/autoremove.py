@@ -34,10 +34,8 @@ class AutoRemovePlaylist(AbstractPlaylist):
         Args:
             track: The skipped track retrieved from the Spotify API.
                 Retains the exact format that Spotify defines in their API.
-
-        Returns:
-
         """
+
         LOG.info("Removing %s from playlist", track["item"]["name"])
         self._spotify_client.user_playlist_remove_all_occurrences_of_tracks(
             self._user_id, self._playlist["id"], [track["item"]["id"]])
@@ -48,6 +46,7 @@ class AutoRemovePlaylist(AbstractPlaylist):
 
         Args:
             track: The fully listened track retrieved from the Spotify API.
-                Retains the exact format that Spotify defines in thei API
+                Retains the exact format that Spotify defines in their API
         """
+
         pass
