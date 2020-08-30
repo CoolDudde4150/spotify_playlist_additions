@@ -117,25 +117,29 @@ class SpotifyPlaylistEngine:
                 LOG.info("Detected song start: %s",
                          track["item"]["name"])
 
+            tasks = []
+
             if _detect_skipped_track(remaining_duration, self._search_wait,
                                      track, prev_track):
 
                 LOG.info("Detected skipped song: %s",
                          prev_track["item"]["name"])
                 for addon in self._playlist_addons:
-                    await addon.handle_skipped_track(track=prev_track)
+                    tasks.append(addon.handle_skipped_track(track=prev_track))
 
             elif _detect_fully_listened_track(remaining_duration,
                                               self._search_wait):
                 LOG.info("Detected fully listened song: %s",
                          prev_track["item"]["name"])
                 for addon in self._playlist_addons:
-                    await addon.handle_fully_listened_track(prev_track)
+                    tasks.append(addon.handle_fully_listened_track(prev_track))
 
             progress_ms = track["progress_ms"]
             duration_ms = track["item"]["duration_ms"]
             remaining_duration = duration_ms - progress_ms
             prev_track = track
+
+            await asyncio.gather(*tasks)
 
             LOG.debug("Waiting %s seconds before testing tracks again",
                       self._search_wait / 1000)
