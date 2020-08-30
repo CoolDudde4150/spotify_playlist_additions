@@ -4,7 +4,7 @@ import sys
 import logging
 import asyncio
 
-from spotify_playlist_additions.spotify_playlist_additions import FluidPlaylist
+from spotify_playlist_additions.spotify_playlist_additions import SpotifyPlaylistEngine
 
 log_format = '%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s'
 logging.basicConfig(format=log_format,
@@ -21,11 +21,11 @@ def main():
 
     LOG.info("Arguments: " + str(args._))
 
-    playlist = FluidPlaylist()
-    playlist.choose_playlist_cli()
+    engine = SpotifyPlaylistEngine(search_wait=200)
+    engine.choose_playlist_cli()
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(playlist.start())
+    loop.run_until_complete(engine.start())
     return 0
 
 

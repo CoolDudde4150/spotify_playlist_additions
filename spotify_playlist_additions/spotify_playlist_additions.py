@@ -1,35 +1,153 @@
 """Main module."""
 
-
 import asyncio
 import logging
-import requests
-import traceback
 
-import spotipy
+import requests
+from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
+
+from spotify_playlist_additions.playlists.autoadd import AutoAddPlaylist
+from spotify_playlist_additions.playlists.autoremove import AutoRemovePlaylist
 
 LOG = logging.getLogger(__name__)
 
 
-class FluidPlaylist:
+def _detect_skipped_track(remaining_duration: float,
+                          end_of_track_buffer: float,
+                          track: dict,
+                          prev_track: dict) -> bool:
+    """Performs the detection logic for whether a track was skipped
 
-    def __init__(
-            self,
-            scope: str = "user-read-currently-playing playlist-modify-public",
-            search_wait: float = 5000,
-            playlist: str = None):
+    Args:
+        remaining_duration: The remaining duration of the track in milliseconds
+        end_of_track_buffer: The buffer of time at the end of a song that, if skipped, will still be counted as fully
+            listened
+        track: The track retrieved directly from the spotify API.
+        prev_track: The track that was detected to be playing on the previous frame.
 
-        self._spotify_client = spotipy.Spotify(auth_manager=SpotifyOAuth(
-            scope=scope, cache_path="cache/tokens.txt"))
+    Returns:
+        bool: Whether the track has been skipped or not.
+    """
 
-        self._user_id = self._spotify_client.current_user()["id"]
+    if remaining_duration > end_of_track_buffer and prev_track["item"]["name"] != track["item"]["name"]:
+        return True
 
-        self._search_wait = search_wait
+    return False
+
+
+def _detect_fully_listened_track(remaining_duration,
+                                 end_of_track_buffer) -> bool:
+    """Performs the detection logic for whether a track was fully listened through
+
+    Args:
+        remaining_duration: The remaining duration of the track in milliseconds
+        end_of_track_buffer: The amount of milliseconds at the end of the song that will still count as fully listened.
+
+    Returns:
+        bool: Whether the track has been fully listened through or not.
+    """
+
+    if remaining_duration < end_of_track_buffer:
+        return True
+    return False
+
+
+class SpotifyPlaylistEngine:
+    """The main driver for Spotify Playlist Additions. Contains the main loop, functionality branches out from here.
+    Contains logic for detection of a skipped or fully listened track and passes this information to various playlist
+    additions that utilize it to perform actions on a playlist
+    """
+
+    def __init__(self,
+                 search_wait: float = 5000,
+                 playlist: dict = None):
+        """Initializer for a SpotifyPlaylistEngine. Nothing that absolutely requires an internet connection should be
+        located here.
+
+        Args:
+            search_wait: How long to wait before performing a track search. Essentially, the rate of checking or time
+            per frame
+            playlist: The playlist dictionary retrieved directly from the spotify API.
+        """
 
         self._playlist = playlist
+        self._search_wait = search_wait
 
-    def choose_playlist_cli(self):
+        self._playlist_addons = []
+        self._collect_addons()
+
+        self._scope = ""
+        self._get_scope()
+
+        self._spotify_client = Spotify(auth_manager=SpotifyOAuth(redirect_uri="http://localhost:8888/callback",
+                                                                 scope=self._scope,
+                                                                 cache_path=".tokens.txt"))
+
+        self._user_id: str = ""
+
+    async def start(self) -> None:
+        """Main loop for the program
+        """
+
+        self._user_id = self._spotify_client.current_user()["id"]
+        self._init_addons()
+
+        prev_track = None
+        remaining_duration = self._search_wait + 1
+        while True:
+            track = None
+            try:
+                track = self._spotify_client.currently_playing()
+            except requests.exceptions.ReadTimeout as exc:
+                LOG.debug(exc)
+                LOG.warning(
+                    "Retrieving currently running track from spotify timed out.",
+                    " See debug for more detail (this is unlikely to be a problem)"
+                )
+            except Exception as e:
+                LOG.error(e)
+            if not track:
+                continue
+
+            if not prev_track:
+                prev_track = track
+
+            if track["item"]["id"] != prev_track["item"]["id"]:
+                LOG.info("Detected song start: %s",
+                         track["item"]["name"])
+
+            tasks = []
+
+            if _detect_skipped_track(remaining_duration, self._search_wait,
+                                     track, prev_track):
+
+                LOG.info("Detected skipped song: %s",
+                         prev_track["item"]["name"])
+                for addon in self._playlist_addons:
+                    tasks.append(addon.handle_skipped_track(track=prev_track))
+
+            elif _detect_fully_listened_track(remaining_duration,
+                                              self._search_wait):
+                LOG.info("Detected fully listened song: %s",
+                         prev_track["item"]["name"])
+                for addon in self._playlist_addons:
+                    tasks.append(addon.handle_fully_listened_track(prev_track))
+
+            progress_ms = track["progress_ms"]
+            duration_ms = track["item"]["duration_ms"]
+            remaining_duration = duration_ms - progress_ms
+            prev_track = track
+
+            await asyncio.gather(*tasks)
+
+            LOG.debug("Waiting %s seconds before testing tracks again",
+                      self._search_wait / 1000)
+            await asyncio.sleep(self._search_wait / 1000)
+
+    def choose_playlist_cli(self) -> None:
+        """Simple interface to choose the playlist. Will be improved upon later on.
+        """
 
         print("Select the playlist you want to use")
 
@@ -47,98 +165,25 @@ class FluidPlaylist:
             except:  # noqa: E722
                 pass
 
-    async def start(self):
-        LOG.info("Playlist configured to wait %s seconds before testing tracks again",
-                 self._search_wait / 1000)
+    def _collect_addons(self):
+        """Collects the addons specified in the config file
+        """
 
-        prev_track = None
-        remaining_duration = self._search_wait + 1
-        while True:
-            track = None
-            try:
-                track = self._spotify_client.currently_playing()
-            except requests.exceptions.ReadTimeout:
-                LOG.debug(traceback.format_exc())
-                LOG.warning(
-                    "Retrieving currently running track from spotify timed out.",
-                    " See debug for more detail (this is unlikely to be a problem)"
-                )
-            if not track:
-                continue
+        self._playlist_addons.append(AutoAddPlaylist)
+        self._playlist_addons.append(AutoRemovePlaylist)
 
-            if not prev_track:
-                prev_track = track
+    def _init_addons(self):
+        """Initializes addons with the required inputs
+        """
 
-            if track["item"]["id"] != prev_track["item"]["id"]:
-                LOG.info("Detected the start of a new song (%s)",
-                         track["item"]["name"])
+        for index in range(len(self._playlist_addons)):
+            self._playlist_addons[index] = self._playlist_addons[index](self._spotify_client, self._playlist,
+                                                                        self._user_id)
 
-            if self._detect_skipped_track(remaining_duration, self._search_wait,
-                                          track, prev_track):
+    def _get_scope(self):
+        """Collects the scope of all the addons into a singular scope, used to make a singular scope request to
+        spotify
+        """
 
-                LOG.info("Detected skipped song. Removed %s from playlist",
-                         prev_track["item"]["name"])
-
-                self._spotify_client.user_playlist_remove_all_occurrences_of_tracks(
-                    self._user_id, self._playlist["id"],
-                    [prev_track["item"]["id"]])
-
-            elif self._detect_fully_listened_track(remaining_duration,
-                                                   self._search_wait):
-                LOG.info("Detected fully listened song (%s)",
-                         prev_track["item"]["name"])
-                asyncio.get_event_loop().create_task(
-                    self._handle_fully_listened_track(prev_track))
-
-            progress_ms = track["progress_ms"]
-            duration_ms = track["item"]["duration_ms"]
-            remaining_duration = duration_ms - progress_ms
-            prev_track = track
-
-            LOG.debug("Waiting %s seconds before testing tracks again",
-                      self._search_wait / 1000)
-            await asyncio.sleep(self._search_wait / 1000)
-
-    def _detect_skipped_track(self, remaining_duration: float,
-                              end_of_track_buffer: float, track: dict,
-                              prev_frame_track: dict) -> bool:
-        if remaining_duration > end_of_track_buffer and prev_frame_track[
-                "item"]["name"] != track["item"]["name"]:
-            return True
-
-        return False
-
-    def _detect_fully_listened_track(self, remaining_duration,
-                                     end_of_track_buffer):
-        if remaining_duration < end_of_track_buffer:
-            return True
-        return False
-
-    async def _handle_fully_listened_track(self, track: dict):
-        if not self._playlist_contains_track(track):
-            LOG.info("Added %s to playlist", track["item"]["name"])
-            self._spotify_client.user_playlist_add_tracks(
-                self._user_id, self._playlist["id"], [track["item"]["id"]])
-
-    def _playlist_contains_track(self, track: dict) -> bool:
-        LOG.info("Performing a search for %s", track["item"]["name"])
-
-        length = 100
-        offset = 0
-        while length == 100:
-            playlist_tracks = self._spotify_client.playlist_tracks(
-                self._playlist["id"],
-                fields="items(track(name))",
-                offset=offset)
-            for playlist_track in playlist_tracks["items"]:
-                if playlist_track["track"]["name"] == track["item"]["name"]:
-                    LOG.info("Playlist already contains %s",
-                             track["item"]["name"])
-                    return True
-
-            length = len(playlist_tracks["items"])
-            offset += length
-
-        LOG.info("Finished searching playlist for %s", track["item"]["name"])
-
-        return False
+        for addon in self._playlist_addons:
+            self._scope += addon.scope + " "
