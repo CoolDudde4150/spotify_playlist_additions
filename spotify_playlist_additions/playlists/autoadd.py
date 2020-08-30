@@ -82,6 +82,6 @@ class AutoAddPlaylist(AbstractPlaylist):
             length = len(playlist_tracks["items"])
             offset += length
 
-        LOG.info("Finished searching playlist for %s", track["item"]["name"])
+        LOG.info("Did not find %s in playlist. Adding", track["item"]["name"])
 
         return False
