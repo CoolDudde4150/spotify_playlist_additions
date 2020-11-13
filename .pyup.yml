@@ -26,10 +26,10 @@ search: True
 # default: empty
 # allowed: list
 requirements:
-    - requirements.txt
+    - requirements.txt:
         update: all
         pin: true
-    - requirements_dev.txt
+    - requirements_dev.txt:
         update: all
         pin: true
 
