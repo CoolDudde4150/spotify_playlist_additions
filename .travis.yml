@@ -18,7 +18,7 @@ jobs:
   include:
     - stage: "test"
       name: "Tests"
-      script: make test-all
+      script: tox
     - stage: "check-lint"
       name: "Check linting"
       script: make lint
