@@ -8,6 +8,8 @@ install:
   - make venv
   - source ./activate
 
+script: tox
+
 stages:
   - install
   - check-lint check-style check-dist check-docs
@@ -16,9 +18,6 @@ stages:
 
 jobs:
   include:
-    - stage: "test"
-      name: "Tests"
-      script: tox
     - stage: "check-lint"
       name: "Check linting"
       script: make lint
