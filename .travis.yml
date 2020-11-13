@@ -3,8 +3,35 @@ python:
 - 3.8
 - 3.7
 - 3.6
-install: pip install -U tox-travis
-script: tox
+install: 
+  - pip install -U tox-travis
+  - make venv
+  - source ./activate
+
+stages:
+  - install
+  - check-lint check-style check-dist check-docs
+  - test
+  - deploy
+
+jobs:
+  include:
+    - stage: "test"
+      name: "Tests"
+      script: make test-all
+    - stage: "check-lint"
+      name: "Check linting"
+      script: make lint
+    - stage: "check-style"
+      name: "Check style"
+      script: make check-style
+    - stage: "check-dist"
+      name: "Check dist"
+      script: make dist
+    - stage: "check-docs"
+      name: "Check docs"
+      script: make docs
+
 deploy:
   provider: pypi
   distributions: sdist bdist_wheel
@@ -15,3 +42,4 @@ deploy:
     tags: true
     repo: prchristie/spotify_playlist_additions
     python: 3.8
+    branch: develop
