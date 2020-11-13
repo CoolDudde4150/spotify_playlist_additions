@@ -6,7 +6,7 @@ import os, webbrowser, sys
 
 from urllib.request import pathname2url
 
-webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
+webbrowser.open(sys.argv[1])
 endef
 export BROWSER_PYSCRIPT
 
@@ -69,6 +69,10 @@ coverage: ## check code coverage quickly with the default Python
 	coverage html
 	$(BROWSER) htmlcov/index.html
 
+check-coverage:
+	coverage run --source spotify_playlist_additions -m pytest
+	coverage report -m --fail-under=80
+
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/spotify_playlist_additions.rst
 	rm -f docs/modules.rst
@@ -102,5 +106,8 @@ venv: .venv/bin/activate ## create a python virtual environment with dependencie
 	ln -sfn .venv/bin/activate activate
 	@echo "Use 'source ./activate' to enter virtual environment"
 
-style: ## styles all code with yapf - google auto styling
-	yapf -irp --style pep8 tests spotify_testing
+style:  ## styles all code with yapf - google auto styling
+	yapf -irp --style pep8 tests spotify_playlist_additions
+
+check-style:  ## Tests that the style is consistent
+	yapf -rd --style pep8 tests spotify_playlist_additions
