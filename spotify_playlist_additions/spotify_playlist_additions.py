@@ -14,8 +14,7 @@ LOG = logging.getLogger(__name__)
 
 
 def _detect_skipped_track(remaining_duration: float,
-                          end_of_track_buffer: float,
-                          track: dict,
+                          end_of_track_buffer: float, track: dict,
                           prev_track: dict) -> bool:
     """Performs the detection logic for whether a track was skipped
 
@@ -30,7 +29,8 @@ def _detect_skipped_track(remaining_duration: float,
         bool: Whether the track has been skipped or not.
     """
 
-    if remaining_duration > end_of_track_buffer and prev_track["item"]["name"] != track["item"]["name"]:
+    if remaining_duration > end_of_track_buffer and prev_track["item"][
+            "name"] != track["item"]["name"]:
         return True
 
     return False
@@ -58,10 +58,7 @@ class SpotifyPlaylistEngine:
     Contains logic for detection of a skipped or fully listened track and passes this information to various playlist
     additions that utilize it to perform actions on a playlist
     """
-
-    def __init__(self,
-                 search_wait: float = 5000,
-                 playlist: dict = None):
+    def __init__(self, search_wait: float = 5000, playlist: dict = None):
         """Initializer for a SpotifyPlaylistEngine. Nothing that absolutely requires an internet connection should be
         located here.
 
@@ -80,9 +77,10 @@ class SpotifyPlaylistEngine:
         self._scope = ""
         self._get_scope()
 
-        self._spotify_client = Spotify(auth_manager=SpotifyOAuth(redirect_uri="http://localhost:8888/callback",
-                                                                 scope=self._scope,
-                                                                 cache_path=".tokens.txt"))
+        self._spotify_client = Spotify(auth_manager=SpotifyOAuth(
+            redirect_uri="http://localhost:8888/callback",
+            scope=self._scope,
+            cache_path=".tokens.txt"))
 
         self._user_id: str = ""
 
@@ -114,8 +112,7 @@ class SpotifyPlaylistEngine:
                 prev_track = track
 
             if track["item"]["id"] != prev_track["item"]["id"]:
-                LOG.info("Detected song start: %s",
-                         track["item"]["name"])
+                LOG.info("Detected song start: %s", track["item"]["name"])
 
             tasks = []
 
@@ -177,8 +174,8 @@ class SpotifyPlaylistEngine:
         """
 
         for index in range(len(self._playlist_addons)):
-            self._playlist_addons[index] = self._playlist_addons[index](self._spotify_client, self._playlist,
-                                                                        self._user_id)
+            self._playlist_addons[index] = self._playlist_addons[index](
+                self._spotify_client, self._playlist, self._user_id)
 
     def _get_scope(self):
         """Collects the scope of all the addons into a singular scope, used to make a singular scope request to
