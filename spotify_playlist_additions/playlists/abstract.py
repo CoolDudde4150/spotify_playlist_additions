@@ -10,7 +10,6 @@ class AbstractPlaylist(ABC):
     from. Each frame, any of these may be invoked if the required state is
     found.
     """
-
     def __init__(self, spotify_client: Spotify, playlist: dict, user_id: str):
         """The most basic initializer that can be implemented. Any playlist
         implementation needs take in a Spotify client from spotipy and a playlist
