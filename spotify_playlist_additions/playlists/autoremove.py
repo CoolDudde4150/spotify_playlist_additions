@@ -6,7 +6,9 @@ were detected to be skipped
 import logging
 from typing import Any
 
+from async_spotify.api.spotify_api_client import SpotifyApiClient
 from spotify_playlist_additions.playlists.abstract import AbstractPlaylist
+
 
 LOG = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ class AutoRemovePlaylist(AbstractPlaylist):
         """
         pass
 
-    async def handle_skipped_track(self, track: dict) -> Any:
+    async def handle_skipped_track(self, track: dict, spotify_client: SpotifyApiClient) -> Any:
         """
         Removes the track from the given playlist
 
@@ -37,10 +39,9 @@ class AutoRemovePlaylist(AbstractPlaylist):
         """
 
         LOG.info("Removing %s from playlist", track["item"]["name"])
-        self._spotify_client.user_playlist_remove_all_occurrences_of_tracks(
-            self._user_id, self._playlist["id"], [track["item"]["id"]])
+        spotify_client.playlists.remove_tracks(self._playlist["id"], {"tracks": [track["item"]["id"]]})
 
-    async def handle_fully_listened_track(self, track: dict) -> Any:
+    async def handle_fully_listened_track(self, track: dict, spotify_client: SpotifyApiClient) -> Any:
         """Called on each configured playlist when the main loop detects a
         fully listened track (to within a degree of uncertainty)
 

@@ -1,16 +1,15 @@
 """Contains the abstract interface for a playlist addon"""
 
 from abc import ABC, abstractmethod
-from typing import Any
-from spotipy import Spotify
-
+from typing import Any, Type
+from async_spotify import SpotifyApiClient
 
 class AbstractPlaylist(ABC):
     """An abstract class that a new playlist can inherit callback functions
     from. Each frame, any of these may be invoked if the required state is
     found.
     """
-    def __init__(self, spotify_client: Spotify, playlist: dict, user_id: str):
+    def __init__(self, playlist: dict, user_id: str):
         """The most basic initializer that can be implemented. Any playlist
         implementation needs take in a Spotify client from spotipy and a playlist
 
@@ -21,8 +20,7 @@ class AbstractPlaylist(ABC):
                 the spotify API
             user_id: The user ID that has connected to this runtime.
         """
-
-        self._spotify_client = spotify_client
+        
         self._playlist = playlist
         self._user_id = user_id
 
@@ -48,7 +46,7 @@ class AbstractPlaylist(ABC):
         """
 
     @abstractmethod
-    async def handle_skipped_track(self, track: dict) -> Any:
+    async def handle_skipped_track(self, track: dict, spotify_client: SpotifyApiClient) -> Any:
         """Called on each configured playlist when the main loop detects a
         skipped track.
 
@@ -58,7 +56,7 @@ class AbstractPlaylist(ABC):
         """
 
     @abstractmethod
-    async def handle_fully_listened_track(self, track: dict) -> Any:
+    async def handle_fully_listened_track(self, track: dict, spotify_client: SpotifyApiClient) -> Any:
         """Called on each configured playlist when the main loop detects a
         fully listened track (to within a degree of uncertainty)
 

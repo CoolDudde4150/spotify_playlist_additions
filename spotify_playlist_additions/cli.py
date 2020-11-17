@@ -13,21 +13,24 @@ logging.basicConfig(format=log_format,
 LOG = logging.getLogger(__name__)
 
 
-def main():
+async def main():
     """Console script for spotify_playlist_additions."""
     parser = argparse.ArgumentParser()
     parser.add_argument('_', nargs='*')
     args = parser.parse_args()
 
     LOG.info("Arguments: " + str(args._))
-
     engine = SpotifyPlaylistEngine(search_wait=200)
-    engine.choose_playlist_cli()
+    await engine.connect_user()
+    await engine.choose_playlist_cli()
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(engine.start())
+    await engine.start()
     return 0
 
 
+def start():
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(main())
+
 if __name__ == "__main__":
-    sys.exit(main())  # pragma: no cover
+    sys.exit(start())  # pragma: no cover

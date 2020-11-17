@@ -5,6 +5,8 @@ Contains the child of an abstract playlist addon for an automatic song adding pl
 import logging
 from typing import Any
 
+from async_spotify.api.spotify_api_client import SpotifyApiClient
+
 from spotify_playlist_additions.playlists.abstract import AbstractPlaylist
 
 LOG = logging.getLogger(__name__)
@@ -27,7 +29,7 @@ class AutoAddPlaylist(AbstractPlaylist):
 
         pass
 
-    async def handle_skipped_track(self, track: dict):
+    async def handle_skipped_track(self, track: dict, spotify_client: SpotifyApiClient):
         """Called on each configured playlist when the main loop detects a
         fully listened track (to within a degree of uncertainty)
 
@@ -37,7 +39,7 @@ class AutoAddPlaylist(AbstractPlaylist):
         """
         pass
 
-    async def handle_fully_listened_track(self, track: dict):
+    async def handle_fully_listened_track(self, track: dict, spotify_client: SpotifyApiClient):
         """Ensures that the playlist doesnt contain the track, then adds it to the playlist
 
         Args:
@@ -45,12 +47,11 @@ class AutoAddPlaylist(AbstractPlaylist):
                 Retains the exact format that Spotify defines in their API.
         """
 
-        if not self._playlist_contains_track(track):
+        if not self._playlist_contains_track(track, spotify_client):
             LOG.info("Added %s to playlist", track["item"]["name"])
-            self._spotify_client.user_playlist_add_tracks(
-                self._user_id, self._playlist["id"], [track["item"]["id"]])
+            spotify_client.playlists.add_tracks(self._playlist["id"], [track["item"]["id"]])
 
-    def _playlist_contains_track(self, track: dict) -> bool:
+    async def _playlist_contains_track(self, track: dict, spotify_client: SpotifyApiClient) -> bool:
         """
         Searches the playlist in O(n) time for the track name.
 
@@ -63,13 +64,13 @@ class AutoAddPlaylist(AbstractPlaylist):
 
         # TODO: There is almost certainly a better way to do this. It would be best to have this calculated only once
         # instead of every playlist addon doing it.
-
+        
         LOG.info("Performing a search for %s", track["item"]["name"])
 
         length = 100
         offset = 0
         while length == 100:
-            playlist_tracks = self._spotify_client.playlist_tracks(
+            playlist_tracks = await spotify_client.playlists.get_tracks(
                 self._playlist["id"],
                 fields="items(track(name))",
                 offset=offset)

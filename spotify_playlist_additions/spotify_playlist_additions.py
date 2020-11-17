@@ -2,16 +2,22 @@
 
 import asyncio
 import logging
+from spotify_playlist_additions.playlists.abstract import AbstractPlaylist
+from typing import List, Type
+from async_spotify.authentification.authorization_flows.authorization_code_flow import AuthorizationCodeFlow
 
 import requests
-from spotipy import Spotify
-from spotipy.oauth2 import SpotifyOAuth
+
+from async_spotify import SpotifyApiClient
+from async_spotify.authentification import SpotifyAuthorisationToken
+from async_spotify.authentification.authorization_flows import ClientCredentialsFlow
+
+from aiohttp import web
 
 from spotify_playlist_additions.playlists.autoadd import AutoAddPlaylist
 from spotify_playlist_additions.playlists.autoremove import AutoRemovePlaylist
 
 LOG = logging.getLogger(__name__)
-
 
 def _detect_skipped_track(remaining_duration: float,
                           end_of_track_buffer: float, track: dict,
@@ -68,35 +74,42 @@ class SpotifyPlaylistEngine:
             playlist: The playlist dictionary retrieved directly from the spotify API.
         """
 
-        self._playlist = playlist
+        self._playlist = playlist or {}
         self._search_wait = search_wait
 
-        self._playlist_addons = []
-        self._collect_addons()
+        
+        uninit_addons = self._collect_addons()
 
-        self._scope = ""
-        self._get_scope()
-
-        self._spotify_client = Spotify(auth_manager=SpotifyOAuth(
-            redirect_uri="http://localhost:8888/callback",
-            scope=self._scope,
-            cache_path=".tokens.txt"))
-
+        self._scope = self._get_scope(uninit_addons)
+        
+        self._spotify_client = SpotifyApiClient(AuthorizationCodeFlow(application_id="09259c4cc7854ead9bfd6fdac3ad9a0a",
+                                                                      application_secret="fcf8cfb0ad5946408f1138af4cc48139",
+                                                                      scopes=self._scope,
+                                                                      redirect_url="http://localhost:8888/callback"),
+                                                hold_authentication=True)
+        
         self._user_id: str = ""
+        
+    async def connect_user(self):
+        auth_url = self._spotify_client.build_authorization_url(show_dialog=True)
+        # TODO: Will need to be replaced
+        self._spotify_client.open_oauth_dialog_in_browser()
+        
+        
+        await self._spotify_client.get_auth_token_with_code()
+        await self._spotify_client.create_new_client()
+        self._user_id = (await self._spotify_client.user.me())["id"]
 
     async def start(self) -> None:
         """Main loop for the program
         """
-
-        self._user_id = self._spotify_client.current_user()["id"]
-        self._init_addons()
 
         prev_track = None
         remaining_duration = self._search_wait + 1
         while True:
             track = None
             try:
-                track = self._spotify_client.currently_playing()
+                track = await self._spotify_client.player.get_current_track()
             except requests.exceptions.ReadTimeout as exc:
                 LOG.debug(exc)
                 LOG.warning(
@@ -122,14 +135,14 @@ class SpotifyPlaylistEngine:
                 LOG.info("Detected skipped song: %s",
                          prev_track["item"]["name"])
                 for addon in self._playlist_addons:
-                    tasks.append(addon.handle_skipped_track(track=prev_track))
+                    tasks.append(addon.handle_skipped_track(prev_track, self._spotify_client))
 
             elif _detect_fully_listened_track(remaining_duration,
                                               self._search_wait):
                 LOG.info("Detected fully listened song: %s",
                          prev_track["item"]["name"])
                 for addon in self._playlist_addons:
-                    tasks.append(addon.handle_fully_listened_track(prev_track))
+                    tasks.append(addon.handle_fully_listened_track(prev_track, self._spotify_client))
 
             progress_ms = track["progress_ms"]
             duration_ms = track["item"]["duration_ms"]
@@ -142,13 +155,13 @@ class SpotifyPlaylistEngine:
                       self._search_wait / 1000)
             await asyncio.sleep(self._search_wait / 1000)
 
-    def choose_playlist_cli(self) -> None:
+    async def choose_playlist_cli(self) -> None:
         """Simple interface to choose the playlist. Will be improved upon later on.
         """
 
         print("Select the playlist you want to use")
 
-        playlists = self._spotify_client.current_user_playlists()
+        playlists = await self._spotify_client.playlists.get_user_all(self._user_id)
         for idx, playlist in enumerate(playlists["items"]):
             print(str(idx) + ":", playlist["name"])
 
@@ -159,28 +172,31 @@ class SpotifyPlaylistEngine:
             try:
                 self._playlist = playlists["items"][int(user_input)]
                 break
-            except:  # noqa: E722
+            except ValueError:
                 pass
 
-    def _collect_addons(self):
+    def _collect_addons(self) -> List[AbstractPlaylist]:
         """Collects the addons specified in the config file
         """
 
-        self._playlist_addons.append(AutoAddPlaylist)
-        self._playlist_addons.append(AutoRemovePlaylist)
-
+        addons = []
+        addons.append(AutoAddPlaylist)
+        addons.append(AutoRemovePlaylist)
+        
+        return addons
+        
     def _init_addons(self):
-        """Initializes addons with the required inputs
-        """
-
         for index in range(len(self._playlist_addons)):
             self._playlist_addons[index] = self._playlist_addons[index](
                 self._spotify_client, self._playlist, self._user_id)
 
-    def _get_scope(self):
+    def _get_scope(self, addons: List[AbstractPlaylist]) -> List[str]:
         """Collects the scope of all the addons into a singular scope, used to make a singular scope request to
         spotify
         """
 
-        for addon in self._playlist_addons:
-            self._scope += addon.scope + " "
+        scope = []
+        for addon in addons:
+            scope.append(addon.scope)
+            
+        return scope
