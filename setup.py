@@ -36,7 +36,7 @@ setup(
     description="A Python implementation of some various different Spotify playlists that I think should alreaydy exist. Fully configurable so you can craft the playlist that you want that acts in the way that you want",
     entry_points={
         'console_scripts': [
-            'spotify_playlist_additions=spotify_playlist_additions.cli:main',
+            'spotify-playlist-additions=spotify_playlist_additions.cli:start',
         ],
     },
     install_requires=requirements,
