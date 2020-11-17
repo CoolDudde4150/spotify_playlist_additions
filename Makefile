@@ -111,3 +111,7 @@ style:  ## styles all code with yapf - google auto styling
 
 check-style:  ## Tests that the style is consistent
 	yapf -rd --style pep8 tests spotify_playlist_additions
+
+check-types:  ## Does static type checking on the code
+	mypy -p spotify_playlist_additions --ignore-missing-imports
+	# $(BROWSER) .mypyreport/index.html
