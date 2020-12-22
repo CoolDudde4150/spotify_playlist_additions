@@ -2,61 +2,43 @@
 
 import asyncio
 import logging
-from spotify_playlist_additions.playlists.abstract import AbstractPlaylist
-from typing import List, Type
-from async_spotify.authentification.authorization_flows.authorization_code_flow import AuthorizationCodeFlow
+from logging import StreamHandler
+from spotify_playlist_additions.user import SpotifyUser
+from async_spotify.api._endpoints.user import User
 
-import requests
+from yarl import URL
+from urllib.parse import urlparse
+from urllib import parse
 
-from async_spotify import SpotifyApiClient
-from async_spotify.authentification import SpotifyAuthorisationToken
-from async_spotify.authentification.authorization_flows import ClientCredentialsFlow
+
+from async_spotify.api.spotify_api_client import SpotifyApiClient
+from async_spotify.authentification.authorization_flows import AuthorizationCodeFlow
+
+from spotify_playlist_additions.utils import get_scope
+from spotify_playlist_additions.playlists.autoremove import AutoRemovePlaylist
+from spotify_playlist_additions.playlists.autoadd import AutoAddPlaylist
 
 from aiohttp import web
+import aiohttp
+from aiohttp.web_request import Request
+from aiohttp.web_response import Response, StreamResponse
 
-from spotify_playlist_additions.playlists.autoadd import AutoAddPlaylist
-from spotify_playlist_additions.playlists.autoremove import AutoRemovePlaylist
 
 LOG = logging.getLogger(__name__)
 
-def _detect_skipped_track(remaining_duration: float,
-                          end_of_track_buffer: float, track: dict,
-                          prev_track: dict) -> bool:
-    """Performs the detection logic for whether a track was skipped
 
-    Args:
-        remaining_duration: The remaining duration of the track in milliseconds
-        end_of_track_buffer: The buffer of time at the end of a song that, if skipped, will still be counted as fully
-            listened
-        track: The track retrieved directly from the spotify API.
-        prev_track: The track that was detected to be playing on the previous frame.
-
-    Returns:
-        bool: Whether the track has been skipped or not.
-    """
-
-    if remaining_duration > end_of_track_buffer and prev_track["item"][
-            "name"] != track["item"]["name"]:
-        return True
-
-    return False
-
-
-def _detect_fully_listened_track(remaining_duration,
-                                 end_of_track_buffer) -> bool:
-    """Performs the detection logic for whether a track was fully listened through
-
-    Args:
-        remaining_duration: The remaining duration of the track in milliseconds
-        end_of_track_buffer: The amount of milliseconds at the end of the song that will still count as fully listened.
-
-    Returns:
-        bool: Whether the track has been fully listened through or not.
-    """
-
-    if remaining_duration < end_of_track_buffer:
-        return True
-    return False
+class SpotifyOauthError(Exception):
+    """ Error during Auth Code or Implicit Grant flow """
+    def __init__(self,
+                 message,
+                 error=None,
+                 error_description=None,
+                 *args,
+                 **kwargs):
+        self.error = error
+        self.error_description = error_description
+        self.__dict__.update(kwargs)
+        super(SpotifyOauthError, self).__init__(message, *args, **kwargs)
 
 
 class SpotifyPlaylistEngine:
@@ -73,130 +55,63 @@ class SpotifyPlaylistEngine:
             per frame
             playlist: The playlist dictionary retrieved directly from the spotify API.
         """
+        self.api_calls = 0
 
-        self._playlist = playlist or {}
-        self._search_wait = search_wait
-
+    
+    async def start(self):
+        await self._start_http_server()
         
-        uninit_addons = self._collect_addons()
+    async def _start_http_server(self):
+        app = self._create_http_server()
+        runner = web.AppRunner(app)
+        await runner.setup()
+        await web.TCPSite(runner).start()
 
-        self._scope = self._get_scope(uninit_addons)
+    def _create_http_server(self):
+        app = web.Application()
+        app.add_routes([
+            web.get("/callback", self.auth_callback),
+            web.get("/spotifyadditions", self.redirect_callback)
+        ])
+        return app
         
-        self._spotify_client = SpotifyApiClient(AuthorizationCodeFlow(application_id="09259c4cc7854ead9bfd6fdac3ad9a0a",
-                                                                      application_secret="fcf8cfb0ad5946408f1138af4cc48139",
-                                                                      scopes=self._scope,
-                                                                      redirect_url="http://localhost:8888/callback"),
-                                                hold_authentication=True)
+    async def auth_callback(self, request: Request)->StreamResponse:
+        form = SpotifyPlaylistEngine.parse_auth_response_url(request.url)
         
-        self._user_id: str = ""
+        flow = AuthorizationCodeFlow()
+        flow.load_from_env()
+        flow.scopes = [">:("]
+        client = SpotifyApiClient(flow, hold_authentication=True)
         
-    async def connect_user(self):
-        auth_url = self._spotify_client.build_authorization_url(show_dialog=True)
-        # TODO: Will need to be replaced
-        self._spotify_client.open_oauth_dialog_in_browser()
+        await client.get_auth_token_with_code(form["code"])
         
+        await client.create_new_client(request_limit=1500)
+
+        user = SpotifyUser(client, 2000)
+        await user.start()
         
-        await self._spotify_client.get_auth_token_with_code()
-        await self._spotify_client.create_new_client()
-        self._user_id = (await self._spotify_client.user.me())["id"]
-
-    async def start(self) -> None:
-        """Main loop for the program
-        """
-
-        prev_track = None
-        remaining_duration = self._search_wait + 1
-        while True:
-            track = None
-            try:
-                track = await self._spotify_client.player.get_current_track()
-            except requests.exceptions.ReadTimeout as exc:
-                LOG.debug(exc)
-                LOG.warning(
-                    "Retrieving currently running track from spotify timed out.",
-                    " See debug for more detail (this is unlikely to be a problem)"
-                )
-            except Exception as e:
-                LOG.error(e)
-            if not track:
-                continue
-
-            if not prev_track:
-                prev_track = track
-
-            if track["item"]["id"] != prev_track["item"]["id"]:
-                LOG.info("Detected song start: %s", track["item"]["name"])
-
-            tasks = []
-
-            if _detect_skipped_track(remaining_duration, self._search_wait,
-                                     track, prev_track):
-
-                LOG.info("Detected skipped song: %s",
-                         prev_track["item"]["name"])
-                for addon in self._playlist_addons:
-                    tasks.append(addon.handle_skipped_track(prev_track, self._spotify_client))
-
-            elif _detect_fully_listened_track(remaining_duration,
-                                              self._search_wait):
-                LOG.info("Detected fully listened song: %s",
-                         prev_track["item"]["name"])
-                for addon in self._playlist_addons:
-                    tasks.append(addon.handle_fully_listened_track(prev_track, self._spotify_client))
-
-            progress_ms = track["progress_ms"]
-            duration_ms = track["item"]["duration_ms"]
-            remaining_duration = duration_ms - progress_ms
-            prev_track = track
-
-            await asyncio.gather(*tasks)
-
-            LOG.debug("Waiting %s seconds before testing tracks again",
-                      self._search_wait / 1000)
-            await asyncio.sleep(self._search_wait / 1000)
-
-    async def choose_playlist_cli(self) -> None:
-        """Simple interface to choose the playlist. Will be improved upon later on.
-        """
-
-        print("Select the playlist you want to use")
-
-        playlists = await self._spotify_client.playlists.get_user_all(self._user_id)
-        for idx, playlist in enumerate(playlists["items"]):
-            print(str(idx) + ":", playlist["name"])
-
-        # TODO: Make this not shit
-        while True:
-            user_input = input("Select a number: ")
-
-            try:
-                self._playlist = playlists["items"][int(user_input)]
-                break
-            except ValueError:
-                pass
-
-    def _collect_addons(self) -> List[AbstractPlaylist]:
-        """Collects the addons specified in the config file
-        """
-
-        addons = []
-        addons.append(AutoAddPlaylist)
-        addons.append(AutoRemovePlaylist)
+        return web.Response(text="Started your spotify playlist!")
+    
+    async def redirect_callback(self, request: Request)->StreamResponse:
+        addons = [
+            AutoAddPlaylist,
+            AutoRemovePlaylist
+        ]
+        scope = get_scope(addons)
+        flow = AuthorizationCodeFlow()
+        flow.load_from_env()
+        flow.scopes = scope
+        client = SpotifyApiClient(flow)
+        url = client.build_authorization_url()
         
-        return addons
-        
-    def _init_addons(self):
-        for index in range(len(self._playlist_addons)):
-            self._playlist_addons[index] = self._playlist_addons[index](
-                self._spotify_client, self._playlist, self._user_id)
-
-    def _get_scope(self, addons: List[AbstractPlaylist]) -> List[str]:
-        """Collects the scope of all the addons into a singular scope, used to make a singular scope request to
-        spotify
-        """
-
-        scope = []
-        for addon in addons:
-            scope.append(addon.scope)
-            
-        return scope
+        return web.HTTPFound(url)
+    
+    @staticmethod
+    def parse_auth_response_url(url: URL):
+        query_s = urlparse(str(url)).query
+        form = dict(parse.parse_qsl(query_s))
+        if "error" in form:
+            raise SpotifyOauthError("Received error from auth server: "
+                                    "{}".format(form["error"]),
+                                    error=form["error"])
+        return form
