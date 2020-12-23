@@ -29,7 +29,8 @@ class AutoAddPlaylist(AbstractPlaylist):
 
         pass
 
-    async def handle_skipped_track(self, track: dict, spotify_client: SpotifyApiClient):
+    async def handle_skipped_track(self, track: dict,
+                                   spotify_client: SpotifyApiClient):
         """Called on each configured playlist when the main loop detects a
         fully listened track (to within a degree of uncertainty)
 
@@ -39,7 +40,8 @@ class AutoAddPlaylist(AbstractPlaylist):
         """
         pass
 
-    async def handle_fully_listened_track(self, track: dict, spotify_client: SpotifyApiClient):
+    async def handle_fully_listened_track(self, track: dict,
+                                          spotify_client: SpotifyApiClient):
         """Ensures that the playlist doesnt contain the track, then adds it to the playlist
 
         Args:
@@ -49,9 +51,11 @@ class AutoAddPlaylist(AbstractPlaylist):
 
         if not self._playlist_contains_track(track, spotify_client):
             LOG.info("Added %s to playlist", track["item"]["name"])
-            spotify_client.playlists.add_tracks(self._playlist["id"], [track["item"]["id"]])
+            spotify_client.playlists.add_tracks(self._playlist["id"],
+                                                [track["item"]["id"]])
 
-    async def _playlist_contains_track(self, track: dict, spotify_client: SpotifyApiClient) -> bool:
+    async def _playlist_contains_track(
+            self, track: dict, spotify_client: SpotifyApiClient) -> bool:
         """
         Searches the playlist in O(n) time for the track name.
 
@@ -64,7 +68,7 @@ class AutoAddPlaylist(AbstractPlaylist):
 
         # TODO: There is almost certainly a better way to do this. It would be best to have this calculated only once
         # instead of every playlist addon doing it.
-        
+
         LOG.info("Performing a search for %s", track["item"]["name"])
 
         length = 100
