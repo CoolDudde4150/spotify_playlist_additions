@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from spotify_playlist_additions.utils import _detect_fully_listened_track, _detect_skipped_track, create_task
+from spotify_playlist_additions.utils import detect_fully_listened_track, detect_skipped_track, create_task
 from requests.exceptions import ReadTimeout
 from spotify_playlist_additions.playlist import SpotifyPlaylist
 from typing import List
@@ -21,6 +21,8 @@ class SpotifyUser:
     async def start(self):
         self._user_id = (await self._client.user.me())["id"]
         await self.choose_playlist_cli()
+        
+        LOG.info("Starting user %s", (await self._client.user.me())["display_name"])
         
         self._continue = True
         self._loop_task = create_task(self.main_loop())
@@ -44,6 +46,7 @@ class SpotifyUser:
 
             try:
                 self._playlist = playlists["items"][int(user_input)]
+                self._playlists.append(SpotifyPlaylist())
                 break
             except ValueError:
                 pass
@@ -52,6 +55,7 @@ class SpotifyUser:
         prev_track = None
         remaining_duration = self._search_wait + 1
         while self._continue:
+            await asyncio.sleep(self._search_wait / 1000)
             track = None
             try:
                 track = await self._client.player.get_current_track()
@@ -73,7 +77,7 @@ class SpotifyUser:
 
             tasks = []
 
-            if _detect_skipped_track(remaining_duration, self._search_wait,
+            if detect_skipped_track(remaining_duration, self._search_wait,
                                      track, prev_track):
 
                 LOG.info("Detected skipped song: %s",
@@ -83,7 +87,7 @@ class SpotifyUser:
                         playlist.handle_skipped_track(prev_track,
                                                       self._client))
 
-            elif _detect_fully_listened_track(remaining_duration,
+            elif detect_fully_listened_track(remaining_duration,
                                               self._search_wait):
                 LOG.info("Detected fully listened song: %s",
                          prev_track["item"]["name"])
@@ -101,4 +105,3 @@ class SpotifyUser:
 
             LOG.debug("Waiting %s seconds before testing tracks again",
                       self._search_wait / 1000)
-            await asyncio.sleep(self._search_wait / 1000)
