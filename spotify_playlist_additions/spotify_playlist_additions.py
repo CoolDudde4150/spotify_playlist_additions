@@ -55,8 +55,6 @@ class SpotifyPlaylistEngine:
             per frame
             playlist: The playlist dictionary retrieved directly from the spotify API.
         """
-        self.api_calls = 0
-
     
     async def start(self):
         await self._start_http_server()
