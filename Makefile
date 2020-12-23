@@ -67,11 +67,13 @@ coverage: ## check code coverage quickly with the default Python
 	coverage run --source spotify_playlist_additions -m pytest
 	coverage report -m
 	coverage html
-	$(BROWSER) htmlcov/index.html
 
 check-coverage:
 	coverage run --source spotify_playlist_additions -m pytest
 	coverage report -m --fail-under=80
+
+show-coverage: coverage ## Shows the coverage report in a browser
+	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/spotify_playlist_additions.rst
@@ -79,6 +81,8 @@ docs: ## generate Sphinx HTML documentation, including API docs
 	sphinx-apidoc -o docs/ spotify_playlist_additions
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
+
+show-docs: docs ## Opens the docs in a browser after creating them
 	$(BROWSER) docs/_build/html/index.html
 
 servedocs: docs ## compile the docs watching for changes
@@ -114,4 +118,6 @@ check-style:  ## Tests that the style is consistent
 
 check-types:  ## Does static type checking on the code
 	mypy -p spotify_playlist_additions --ignore-missing-imports
-	# $(BROWSER) .mypyreport/index.html
+
+show-types: check-types ## Shows the type checking report after running the type checker
+	$(BROWSER) .mypyreport/index.html
