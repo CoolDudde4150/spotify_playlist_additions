@@ -21,16 +21,15 @@ async def main():
 
     LOG.info("Arguments: " + str(args._))
     engine = SpotifyPlaylistEngine(search_wait=200)
-    await engine.connect_user()
-    await engine.choose_playlist_cli()
-
     await engine.start()
+    await asyncio.sleep(10000)
     return 0
 
 
 def start():
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(main())
+
 
 if __name__ == "__main__":
     sys.exit(start())  # pragma: no cover
