@@ -3,6 +3,8 @@
 import asyncio
 import logging
 from logging import StreamHandler
+from typing import List
+
 from spotify_playlist_additions.user import SpotifyUser
 from async_spotify.api._endpoints.user import User
 
@@ -55,15 +57,24 @@ class SpotifyPlaylistEngine:
             per frame
             playlist: The playlist dictionary retrieved directly from the spotify API.
         """
-    
+        self._users: List[SpotifyUser] = []
+        app = self._create_http_server()
+        self._runner = web.AppRunner(app)
+        self._site = None
+
     async def start(self):
         await self._start_http_server()
-        
+
+    async def stop(self):
+        await self._site.stop()
+        await self._runner.shutdown()
+
+        await asyncio.gather(user.stop() for user in self._users)
+
     async def _start_http_server(self):
-        app = self._create_http_server()
-        runner = web.AppRunner(app)
-        await runner.setup()
-        await web.TCPSite(runner).start()
+        await self._runner.setup()
+        self._site = web.TCPSite(self._runner, port=43332)
+        await self._site.start()
 
     def _create_http_server(self):
         app = web.Application()
@@ -72,24 +83,24 @@ class SpotifyPlaylistEngine:
             web.get("/spotifyadditions", self.redirect_callback)
         ])
         return app
-        
+
     async def auth_callback(self, request: Request)->StreamResponse:
         form = SpotifyPlaylistEngine.parse_auth_response_url(request.url)
-        
+
         flow = AuthorizationCodeFlow()
         flow.load_from_env()
         flow.scopes = [">:("]
         client = SpotifyApiClient(flow, hold_authentication=True)
-        
+
         await client.get_auth_token_with_code(form["code"])
-        
+
         await client.create_new_client(request_limit=1500)
 
         user = SpotifyUser(client, 2000)
         await user.start()
-        
+
         return web.Response(text="Started your spotify playlist!")
-    
+
     async def redirect_callback(self, request: Request)->StreamResponse:
         addons = [
             AutoAddPlaylist,
@@ -101,9 +112,9 @@ class SpotifyPlaylistEngine:
         flow.scopes = scope
         client = SpotifyApiClient(flow)
         url = client.build_authorization_url()
-        
+
         return web.HTTPFound(url)
-    
+
     @staticmethod
     def parse_auth_response_url(url: URL):
         query_s = urlparse(str(url)).query
