@@ -1,6 +1,6 @@
-"""
-Contains logic for a singular user connecting to a Spotify Playlist Additions instance, such that
-each user is completely separate
+"""Contains logic for a singular user connecting to a Spotify Playlist Additions instance.
+
+Users maintain separation by running an instance of the main loop checks on that users tracks
 """
 
 import asyncio
@@ -17,14 +17,15 @@ LOG = logging.getLogger(__name__)
 
 
 class SpotifyUser:
-    """A user class that will be created each time someone connects through the web
-    application
+    """A user class that will be created each time someone connects through the web application.
+
+    Each user should represent a different Spotify account, where a User has multiple managed playlists
     """
 
     def __init__(self, client: SpotifyApiClient, search_wait: int):
-        """
-        Initializes a user with its own SpotifyApiClient to make requests with. Starting this
-        class requires an internet connection
+        """Initializes a user with its own SpotifyApiClient to make requests with.
+
+        Starting this class requires an internet connection
 
         Args:
             client: An ApiClient that can be used to make requests on behalf of the user. Will

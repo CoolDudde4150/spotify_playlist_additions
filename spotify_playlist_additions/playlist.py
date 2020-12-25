@@ -1,4 +1,3 @@
-from spotify_playlist_additions.playlists.autoadd import AutoAddPlaylist
 from async_spotify.api.spotify_api_client import SpotifyApiClient
 
 

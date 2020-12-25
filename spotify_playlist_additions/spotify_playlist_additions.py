@@ -2,27 +2,21 @@
 
 import asyncio
 import logging
-from logging import StreamHandler
 from typing import List
-
-from spotify_playlist_additions.user import SpotifyUser
-from async_spotify.api._endpoints.user import User
-
-from yarl import URL
-from urllib.parse import urlparse
 from urllib import parse
-
-from async_spotify.api.spotify_api_client import SpotifyApiClient
-from async_spotify.authentification.authorization_flows import AuthorizationCodeFlow
-
-from spotify_playlist_additions.utils import get_scope
-from spotify_playlist_additions.playlists.autoremove import AutoRemovePlaylist
-from spotify_playlist_additions.playlists.autoadd import AutoAddPlaylist
+from urllib.parse import urlparse
 
 from aiohttp import web
-import aiohttp
 from aiohttp.web_request import Request
-from aiohttp.web_response import Response, StreamResponse
+from aiohttp.web_response import StreamResponse
+from async_spotify.api.spotify_api_client import SpotifyApiClient
+from async_spotify.authentification.authorization_flows import AuthorizationCodeFlow
+from yarl import URL
+
+from spotify_playlist_additions.playlists.autoadd import AutoAddPlaylist
+from spotify_playlist_additions.playlists.autoremove import AutoRemovePlaylist
+from spotify_playlist_additions.user import SpotifyUser
+from spotify_playlist_additions.utils import get_scope
 
 LOG = logging.getLogger(__name__)
 
