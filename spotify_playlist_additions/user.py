@@ -1,5 +1,12 @@
+"""
+Contains logic for a singular user connecting to a Spotify Playlist Additions instance, such that
+each user is completely separate
+"""
+
 import asyncio
 import logging
+from asyncio import Task
+
 from spotify_playlist_additions.utils import detect_fully_listened_track, detect_skipped_track, create_task
 from requests.exceptions import ReadTimeout
 from spotify_playlist_additions.playlist import SpotifyPlaylist
@@ -10,15 +17,34 @@ LOG = logging.getLogger(__name__)
 
 
 class SpotifyUser:
+    """A user class that will be created each time someone connects through the web
+    application
+    """
+
     def __init__(self, client: SpotifyApiClient, search_wait: int):
+        """
+        Initializes a user with its own SpotifyApiClient to make requests with. Starting this
+        class requires an internet connection
+
+        Args:
+            client: An ApiClient that can be used to make requests on behalf of the user. Will
+                only contain the required scopes as indicated by the selected playlist types
+            search_wait: How many milliseconds between running each playlist addon
+        """
         self._client = client
         self._user_id = ""
         self._playlist = dict()
         self._playlists: List[SpotifyPlaylist] = list()
         self._search_wait = search_wait
         self._continue = True
+        self._tasks: List[Task] = []
 
     async def start(self):
+        """
+        Does any asynchronous startup functions and starts any background tasks required for
+        function. Notably, starts the infinite loop of checking every search_wait amount of time.
+        Not a blocking call, starts it in the background.
+        """
         self._user_id = (await self._client.user.me())["id"]
         await self.choose_playlist_cli()
 
@@ -26,11 +52,14 @@ class SpotifyUser:
                                       self._client.user.me())["display_name"])
 
         self._continue = True
-        self._loop_task = create_task(self.main_loop())
+        self._tasks.append(create_task(self.main_loop()))
 
     async def stop(self):
+        """
+        Stops any asynchronous tasks that were started with the start function
+        """
         self._continue = False
-        await self._loop_task
+        await asyncio.gather(*self._tasks)
 
     async def choose_playlist_cli(self) -> None:
         """Simple interface to choose the playlist. Will be improved upon later on.
@@ -53,6 +82,9 @@ class SpotifyUser:
                 pass
 
     async def main_loop(self):
+        """
+        The main loop of a user, that runs every playlist upon certain events occurring.
+        """
         prev_track = None
         remaining_duration = self._search_wait + 1
         while self._continue:
