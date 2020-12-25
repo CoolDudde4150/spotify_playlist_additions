@@ -21,12 +21,13 @@ class SpotifyUser:
     async def start(self):
         self._user_id = (await self._client.user.me())["id"]
         await self.choose_playlist_cli()
-        
-        LOG.info("Starting user %s", (await self._client.user.me())["display_name"])
-        
+
+        LOG.info("Starting user %s", (await
+                                      self._client.user.me())["display_name"])
+
         self._continue = True
         self._loop_task = create_task(self.main_loop())
-        
+
     async def stop(self):
         self._continue = False
         await self._loop_task
@@ -65,7 +66,7 @@ class SpotifyUser:
                     "Retrieving currently running track from spotify timed out.",
                     " See debug for more detail (this is unlikely to be a problem)"
                 )
-            
+
             if not track:
                 continue
 
@@ -78,7 +79,7 @@ class SpotifyUser:
             tasks = []
 
             if detect_skipped_track(remaining_duration, self._search_wait,
-                                     track, prev_track):
+                                    track, prev_track):
 
                 LOG.info("Detected skipped song: %s",
                          prev_track["item"]["name"])
@@ -88,7 +89,7 @@ class SpotifyUser:
                                                       self._client))
 
             elif detect_fully_listened_track(remaining_duration,
-                                              self._search_wait):
+                                             self._search_wait):
                 LOG.info("Detected fully listened song: %s",
                          prev_track["item"]["name"])
                 for playlist in self._playlists:

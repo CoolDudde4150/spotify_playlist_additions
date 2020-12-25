@@ -12,7 +12,6 @@ from yarl import URL
 from urllib.parse import urlparse
 from urllib import parse
 
-
 from async_spotify.api.spotify_api_client import SpotifyApiClient
 from async_spotify.authentification.authorization_flows import AuthorizationCodeFlow
 
@@ -24,7 +23,6 @@ from aiohttp import web
 import aiohttp
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response, StreamResponse
-
 
 LOG = logging.getLogger(__name__)
 
@@ -85,7 +83,7 @@ class SpotifyPlaylistEngine:
         ])
         return app
 
-    async def auth_callback(self, request: Request)->StreamResponse:
+    async def auth_callback(self, request: Request) -> StreamResponse:
         form = SpotifyPlaylistEngine.parse_auth_response_url(request.url)
 
         flow = AuthorizationCodeFlow()
@@ -102,11 +100,8 @@ class SpotifyPlaylistEngine:
 
         return web.Response(text="Started your spotify playlist!")
 
-    async def redirect_callback(self, request: Request)->StreamResponse:
-        addons = [
-            AutoAddPlaylist,
-            AutoRemovePlaylist
-        ]
+    async def redirect_callback(self, request: Request) -> StreamResponse:
+        addons = [AutoAddPlaylist, AutoRemovePlaylist]
         scope = get_scope(addons)
         flow = AuthorizationCodeFlow()
         flow.load_from_env()

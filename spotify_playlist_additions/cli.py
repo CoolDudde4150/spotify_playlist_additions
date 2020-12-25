@@ -22,7 +22,7 @@ async def main():
     LOG.info("Arguments: " + str(args._))
     engine = SpotifyPlaylistEngine(search_wait=200)
     await engine.start()
-    await asyncio.sleep(10000)
+    await asyncio.sleep(1000000)
     return 0
 
 

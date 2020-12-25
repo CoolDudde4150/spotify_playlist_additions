@@ -12,18 +12,18 @@ def create_task(
     coroutine: Awaitable[T],
     *,
     loop: Optional[asyncio.AbstractEventLoop] = None,
-) -> 'asyncio.Task[T]':
+):
     """
     Believe it or not, asyncio does not actually raise an error if a task with a name assigned to
     it raises an error
-    
+
     This helper function wraps a ``loop.create_task(coroutine())`` call and ensures there is
     an exception handler added to the resulting task. If the task raises an exception it is logged
     using the provided ``logger``, with additional context provided by ``message`` and optionally
     ``message_args``.
     """
     if loop is None:
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_event_loop()
     task = loop.create_task(coroutine)
     task.add_done_callback(functools.partial(handle_task_result))
     return task
@@ -40,9 +40,8 @@ def handle_task_result(task: asyncio.Task) -> None:
         traceback.print_exc()
 
 
-def detect_skipped_track(remaining_duration: float,
-                          end_of_track_buffer: float, track: dict,
-                          prev_track: dict) -> bool:
+def detect_skipped_track(remaining_duration: float, end_of_track_buffer: float,
+                         track: dict, prev_track: dict) -> bool:
     """Performs the detection logic for whether a track was skipped
 
     Args:
@@ -64,7 +63,7 @@ def detect_skipped_track(remaining_duration: float,
 
 
 def detect_fully_listened_track(remaining_duration,
-                                 end_of_track_buffer) -> bool:
+                                end_of_track_buffer) -> bool:
     """Performs the detection logic for whether a track was fully listened through
 
     Args:
