@@ -74,6 +74,7 @@ class SpotifyPlaylistEngine:
     async def _start_http_server(self):
         await self._runner.setup()
         self._site = web.TCPSite(self._runner, port=43332)
+        LOG.info("Listening on port 43332")
         await self._site.start()
 
     def _create_http_server(self):
