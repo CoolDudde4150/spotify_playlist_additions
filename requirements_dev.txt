@@ -9,6 +9,9 @@ coverage==5.2.1
 Sphinx==3.2.1
 twine==3.2.0
 yapf==0.30.0
+flake8-docstrings
 
 pytest==6.0.1
 pytest-runner==5.2
+mypy
+lxml
