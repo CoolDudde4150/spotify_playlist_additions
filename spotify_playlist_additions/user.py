@@ -34,7 +34,6 @@ class SpotifyUser:
         """
         self._client = client
         self._user_id = ""
-        self._playlist = dict()
         self._playlists: List[SpotifyPlaylist] = list()
         self._search_wait = search_wait
         self._continue = True
