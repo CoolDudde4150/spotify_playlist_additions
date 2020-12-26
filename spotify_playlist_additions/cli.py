@@ -27,6 +27,11 @@ async def main():
 
 
 def start():
+    """Starts the cli program running forever.
+
+    returns:
+        int: The code of the runtime of the program on completion
+    """  # noqa: D405
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(main())
 

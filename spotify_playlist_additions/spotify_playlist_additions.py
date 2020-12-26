@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Dict, List
+from typing import Dict
 from urllib import parse
 from urllib.parse import urlparse
 
@@ -22,13 +22,20 @@ LOG = logging.getLogger(__name__)
 
 
 class SpotifyOauthError(Exception):
-    """ Error during Auth Code or Implicit Grant flow """
+    """Error during Auth Code or Implicit Grant flow."""
     def __init__(self,
                  message,
                  error=None,
                  error_description=None,
                  *args,
                  **kwargs):
+        """An error that is caused when an authorization error occurs.
+
+        Args:
+            message: The message that will be displayed in the console
+            error: The error. Defaults to None.
+            error_description: A description of the error. Defaults to None.
+        """
         self.error = error
         self.error_description = error_description
         self.__dict__.update(kwargs)
@@ -37,12 +44,14 @@ class SpotifyOauthError(Exception):
 
 class SpotifyPlaylistEngine:
     """The main driver for Spotify Playlist Additions. Contains the main loop, functionality branches out from here.
+
     Contains logic for detection of a skipped or fully listened track and passes this information to various playlist
     additions that utilize it to perform actions on a playlist
     """
     def __init__(self, search_wait: float = 5000, playlist: dict = None):
-        """Initializer for a SpotifyPlaylistEngine. Nothing that absolutely requires an internet connection should be
-        located here.
+        """Initializer for a SpotifyPlaylistEngine.
+
+        Nothing that absolutely requires an internet connection should be located here.
 
         Args:
             search_wait: How long to wait before performing a track search. Essentially, the rate of checking or time
@@ -55,9 +64,11 @@ class SpotifyPlaylistEngine:
         self._site = None
 
     async def start(self):
+        """Starts the playlist engine, equivalent to starting a httpserver currently."""
         await self._start_http_server()
 
     async def stop(self):
+        """Stops the engine, which stops the httpserver and site and stops all the connected users."""
         await self._site.stop()
         await self._runner.shutdown()
 
@@ -72,13 +83,24 @@ class SpotifyPlaylistEngine:
     def _create_http_server(self):
         app = web.Application()
         app.add_routes([
-            web.get("/callback", self.auth_callback),
-            web.get("/spotifyadditions", self.redirect_callback)
+            web.get("/callback", self._auth_callback),
+            web.get("/spotifyadditions", self._redirect_callback)
         ])
         return app
 
-    async def auth_callback(self, request: Request) -> StreamResponse:
-        form = SpotifyPlaylistEngine.parse_auth_response_url(request.url)
+    async def _auth_callback(self, request: Request) -> StreamResponse:
+        """An auth callback that should include a client auth code in the request url.
+
+        Best way to arrive here is with a redirect (as shown in the redirect callback)
+
+        Args:
+            request: The request that the user made while going to the web address
+
+        Returns:
+            StreamResponse: A response to the request
+        """
+        # TODO: Probably needs some sort of checking to ensure the request url is valid
+        form = SpotifyPlaylistEngine._parse_auth_response_url(request.url)
 
         flow = AuthorizationCodeFlow()
         flow.load_from_env()
@@ -89,7 +111,7 @@ class SpotifyPlaylistEngine:
 
         await client.create_new_client(request_limit=1500)
         name = await client.user.me()
-        
+
         # Use an existing user if it already exists
         if user := self._users.get(name["id"], None):
             await user.choose_playlist_cli()
@@ -98,12 +120,12 @@ class SpotifyPlaylistEngine:
         # Create a new user if it isnt in the dictionary
         user = SpotifyUser(client, 2000)
         await user.start()
-        
+
         self._users[name["id"]] = user
 
         return web.Response(text="Started your spotify playlist!")
 
-    async def redirect_callback(self, request: Request) -> StreamResponse:
+    async def _redirect_callback(self, request: Request) -> StreamResponse:
         addons = [AutoAddPlaylist, AutoRemovePlaylist]
         scope = get_scope(addons)
         flow = AuthorizationCodeFlow()
@@ -115,7 +137,7 @@ class SpotifyPlaylistEngine:
         return web.HTTPFound(url)
 
     @staticmethod
-    def parse_auth_response_url(url: URL):
+    def _parse_auth_response_url(url: URL):
         query_s = urlparse(str(url)).query
         form = dict(parse.parse_qsl(query_s))
         if "error" in form:

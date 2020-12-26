@@ -1,5 +1,7 @@
+"""A set of utilities that are used throughout SpotifyPlaylistAdditions."""
+
 from spotify_playlist_additions.playlists.abstract import AbstractPlaylist
-from typing import Any, Awaitable, List, Optional, TypeVar, Tuple
+from typing import Awaitable, List, Optional, TypeVar
 
 import asyncio
 import functools
@@ -13,9 +15,7 @@ def create_task(
     *,
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ):
-    """
-    Believe it or not, asyncio does not actually raise an error if a task with a name assigned to
-    it raises an error
+    """Asyncio does not actually raise an error if a task with a name assigned to it raises an error.
 
     This helper function wraps a ``loop.create_task(coroutine())`` call and ensures there is
     an exception handler added to the resulting task. If the task raises an exception it is logged
@@ -25,11 +25,16 @@ def create_task(
     if loop is None:
         loop = asyncio.get_event_loop()
     task = loop.create_task(coroutine)
-    task.add_done_callback(functools.partial(handle_task_result))
+    task.add_done_callback(functools.partial(_handle_task_result))
     return task
 
 
-def handle_task_result(task: asyncio.Task) -> None:
+def _handle_task_result(task: asyncio.Task) -> None:
+    """The on done callback for the custom create_task used to ensure that tasks end properly with asyncio.
+
+    Args:
+        task: The task that was run
+    """
     try:
         task.result()
     except asyncio.CancelledError:
@@ -42,7 +47,7 @@ def handle_task_result(task: asyncio.Task) -> None:
 
 def detect_skipped_track(remaining_duration: float, end_of_track_buffer: float,
                          track: dict, prev_track: dict) -> bool:
-    """Performs the detection logic for whether a track was skipped
+    """Performs the detection logic for whether a track was skipped.
 
     Args:
         remaining_duration: The remaining duration of the track in milliseconds
@@ -54,7 +59,6 @@ def detect_skipped_track(remaining_duration: float, end_of_track_buffer: float,
     Returns:
         bool: Whether the track has been skipped or not.
     """
-
     if remaining_duration > end_of_track_buffer and prev_track["item"][
             "name"] != track["item"]["name"]:
         return True
@@ -64,7 +68,7 @@ def detect_skipped_track(remaining_duration: float, end_of_track_buffer: float,
 
 def detect_fully_listened_track(remaining_duration,
                                 end_of_track_buffer) -> bool:
-    """Performs the detection logic for whether a track was fully listened through
+    """Performs the detection logic for whether a track was fully listened through.
 
     Args:
         remaining_duration: The remaining duration of the track in milliseconds
@@ -73,17 +77,13 @@ def detect_fully_listened_track(remaining_duration,
     Returns:
         bool: Whether the track has been fully listened through or not.
     """
-
     if remaining_duration < end_of_track_buffer:
         return True
     return False
 
 
 def get_scope(addons: List[AbstractPlaylist]) -> List[str]:
-    """Collects the scope of all the addons into a singular scope, used to make a singular scope request to
-    spotify
-    """
-
+    """Collects the scope of all the addons into a singular scope, used to make a singular scope request to spotify."""
     scope = []
     for addon in addons:
         scope.append(addon.scope)

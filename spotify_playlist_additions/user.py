@@ -21,7 +21,6 @@ class SpotifyUser:
 
     Each user should represent a different Spotify account, where a User has multiple managed playlists
     """
-
     def __init__(self, client: SpotifyApiClient, search_wait: int):
         """Initializes a user with its own SpotifyApiClient to make requests with.
 
@@ -40,10 +39,10 @@ class SpotifyUser:
         self._tasks: List[Task] = []
 
     async def start(self):
-        """
-        Does any asynchronous startup functions and starts any background tasks required for
-        function. Notably, starts the infinite loop of checking every search_wait amount of time.
-        Not a blocking call, starts it in the background.
+        """Does any asynchronous startup functions and starts any background tasks required for functionality.
+
+        Notably, starts the infinite loop of checking every search_wait amount of time. Not a blocking call, starts it
+        in the background.
         """
         self._user_id = (await self._client.user.me())["id"]
         await self.choose_playlist_cli()
@@ -55,15 +54,12 @@ class SpotifyUser:
         self._tasks.append(create_task(self.main_loop()))
 
     async def stop(self):
-        """
-        Stops any asynchronous tasks that were started with the start function
-        """
+        """Stops any asynchronous tasks that were started with the start function."""
         self._continue = False
         await asyncio.gather(*self._tasks)
 
     async def choose_playlist_cli(self) -> None:
-        """Simple interface to choose the playlist. Will be improved upon later on.
-        """
+        """Simple interface to choose the playlist. Will be improved upon later on."""
         print("Select the playlist you want to use")
 
         playlists = await self._client.playlists.get_user_all(self._user_id)
@@ -82,9 +78,7 @@ class SpotifyUser:
                 pass
 
     async def main_loop(self):
-        """
-        The main loop of a user, that runs every playlist upon certain events occurring.
-        """
+        """The main loop of a user, that runs every playlist upon certain events occurring."""
         prev_track = None
         remaining_duration = self._search_wait + 1
         while self._continue:
