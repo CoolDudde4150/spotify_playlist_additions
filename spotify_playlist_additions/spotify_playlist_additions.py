@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import List
+from typing import Dict, List
 from urllib import parse
 from urllib.parse import urlparse
 
@@ -49,7 +49,7 @@ class SpotifyPlaylistEngine:
             per frame
             playlist: The playlist dictionary retrieved directly from the spotify API.
         """
-        self._users: List[SpotifyUser] = []
+        self._users: Dict[str, SpotifyUser] = {}
         app = self._create_http_server()
         self._runner = web.AppRunner(app)
         self._site = None
@@ -61,12 +61,12 @@ class SpotifyPlaylistEngine:
         await self._site.stop()
         await self._runner.shutdown()
 
-        await asyncio.gather(user.stop() for user in self._users)
+        await asyncio.gather(user.stop() for user in self._users.values())
 
     async def _start_http_server(self):
         await self._runner.setup()
-        self._site = web.TCPSite(self._runner, port=43332)
-        LOG.info("Listening on port 43332")
+        self._site = web.TCPSite(self._runner, port=8080)
+        LOG.info("Listening on port 8080")
         await self._site.start()
 
     def _create_http_server(self):
@@ -88,9 +88,18 @@ class SpotifyPlaylistEngine:
         await client.get_auth_token_with_code(form["code"])
 
         await client.create_new_client(request_limit=1500)
+        name = await client.user.me()
+        
+        # Use an existing user if it already exists
+        if user := self._users.get(name["id"], None):
+            await user.choose_playlist_cli()
+            return web.Response(text="Started another playlist for you!")
 
+        # Create a new user if it isnt in the dictionary
         user = SpotifyUser(client, 2000)
         await user.start()
+        
+        self._users[name["id"]] = user
 
         return web.Response(text="Started your spotify playlist!")
 
