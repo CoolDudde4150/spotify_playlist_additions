@@ -1,2 +1,2 @@
 spotipy==2.18.0
-requests
+requests==2.25.1
